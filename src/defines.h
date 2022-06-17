@@ -28,8 +28,6 @@
 #define MY_TZ TZ_Europe_London
 #define MY_NTP_SERVER "at.pool.ntp.org"
 
-// MQTT Last Will Message
-//#define lwm               "Offline"
 
 // MQTT Topic Names
 #define oh3CommandIOT "/house/service/iot-command"              // e.g. IOT-IDENTITY, IOT-RESET, IOT-RESTART, IOT-SWITCH-CONFIG
