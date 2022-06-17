@@ -146,7 +146,7 @@ void wifiSetupConfig(bool configWiFi)
   ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "Personalized-HostName");  
   //ESPAsync_WMParameter p_wifiConfigOnBoot(wifiConfigOnboot_label, "WiFi-Config-On-Boot", "T", 2, customhtml, WFM_LABEL_AFTER);
 
-  //ESPAsync_wifiManager.addParameter(&p_wifiConfigOnBoot);
+  //ESPAsync_wifiManager.addParameter(&p_wifiConfigOnBoot);]
 
   Router_SSID = ESPAsync_wifiManager.WiFi_SSID();
   Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
