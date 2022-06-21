@@ -133,8 +133,9 @@ void handleTelnet()
 				      Telnet.println("l\t\tList status od IoT device");
               Telnet.println("d\t\tToggle DEBUG messages over MQTT and Serial");
               Telnet.println("t\t\tToggle DEBUG messages over telnet");
-				      Telnet.println("r\t\tReset IoT device");
+				      Telnet.println("r\t\tRe-boot IoT device");
 				      Telnet.println("m\t\tDisconnect MQTT broker. Should auto reconnect");
+              Telnet.println("w\t\tSet config WiFi credentials on next reboot");
               telnet_extensionHelp(c);
             break;
           	default:

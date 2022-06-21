@@ -90,14 +90,15 @@ extern bool telnetReporting;
 extern int reporting;
 
 //wifi server config
-//bool wifiConfigOnboot            = true;
-//#define wifiConfigOnboot_label          "wifiConfigOnboot"
 //Set up LittleFS
 #define FileFS        LittleFS
 #define FS_Name       "LittleFS"
 #define FILE_NOT_FOUND 2
 char configFileName[] = "/platform/config.json";
 char wifiConfigOnboot   [10]  =   "NO";
+char mqttBrokerIPAddr   [16]  =   "192.168.0.1";
+char mqttBrokerPort     [5]   =   "1883";
+
 
 //Keep local copy of Wifi credentials
 String Router_SSID;
@@ -138,18 +139,23 @@ void platform_setup(bool configWiFi)
 void wifiSetupConfig(bool configWiFi)
 {
   #define HTTP_PORT           80
-  //char customhtml[24] = "type=\"checkbox\"";
+ 
+  char customhtml_ipv4[150] = "type=\"text\" minlength=\"7\" maxlength=\"15\" size=\"15\" pattern=\"^((\\d{1,2}|1\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(\\d{1,2}|1\\d\\d|2[0-4]\\d|25[0-5])$\"";
+  char customhtml_port[150] = "type=\"text\" minlength=\"4\" maxlength=\"4\" size=\"4\"pattern=\"[0-9]{4}\"" ;
 
   AsyncWebServer webServer(HTTP_PORT);
   DNSServer dnsServer;
-
+// new 3 lines
   ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "Personalized-HostName");  
-  //ESPAsync_WMParameter p_wifiConfigOnBoot(wifiConfigOnboot_label, "WiFi-Config-On-Boot", "T", 2, customhtml, WFM_LABEL_AFTER);
+  ESPAsync_WMParameter p_mqttBrokerIP(p_mqttBrokerIP_Label, "MQTT Broker IP address", mqttBrokerIPAddr, 16, customhtml_ipv4, WFM_LABEL_AFTER);
+  ESPAsync_WMParameter p_mqttBrokerPort(p_mqttBrokerPort_Label, "MQTT Broker Port", mqttBrokerPort, 5, customhtml_port, WFM_LABEL_AFTER);
 
-  //ESPAsync_wifiManager.addParameter(&p_wifiConfigOnBoot);]
+  ESPAsync_wifiManager.addParameter(&p_mqttBrokerIP);
+  ESPAsync_wifiManager.addParameter(&p_mqttBrokerPort);
 
   Router_SSID = ESPAsync_wifiManager.WiFi_SSID();
   Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
+  
 
   //if not SSID or password not set then start Config Portal
   if ( Router_SSID == "" || Router_Pass == "" )  // if either not set assume an inital config needed
@@ -164,31 +170,25 @@ void wifiSetupConfig(bool configWiFi)
   }
   if (configWiFi == true)
   {
-    String portalSSID = "ESP-w" + sensor.getType() + "-" + sensor.getName();
+    String portalSSID = "ESP-" + sensor.getType() + "-" + sensor.getName();
     Serial.println("ESP Self-Stored: SSID = " + portalSSID);
   
     ESPAsync_wifiManager.setConfigPortalTimeout(0);
     ESPAsync_wifiManager.startConfigPortal(portalSSID.c_str());
+
+    // get the updated values and write to config file.  Note SSID and PASS are stored by the portal service.
+    Router_SSID = ESPAsync_wifiManager.WiFi_SSID();
+    Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
+    strcpy(mqttBrokerIPAddr,  p_mqttBrokerIP.getValue());
+    strcpy(mqttBrokerPort,  p_mqttBrokerPort.getValue());
+    saveFileFSConfigFile();
+
     configWiFi = false;
   }
-  Serial.println("ESP Self-Stored: SSID = " + Router_SSID + ", Pass = " + Router_Pass);
+  Serial.println("ESP Self-Stored: SSID = " + Router_SSID + ", Pass = " + Router_Pass + ", Broker IP = " + mqttBrokerIPAddr + ", Broker Port = " + mqttBrokerPort);
 
 }
 
-/*void wifManagerConfigOnboot()
-{
-  #define HTTP_PORT           80
-  char customhtml[24] = "type=\"checkbox\"";
-
-  AsyncWebServer webServer(HTTP_PORT);
-  DNSServer dnsServer;
-  ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "Personalized-HostName");
-  
-  ESPAsync_WMParameter p_wifiConfigOnBoot(wifiConfigOnboot_label, "WiFi-Config-On-Boot", "T", 2, customhtml, WFM_LABEL_AFTER);
-
-  ESPAsync_wifiManager.addParameter(&p_wifiConfigOnBoot);
-} 
-*/
 
 void mqttTopicsubscribe( const char* topic,int qos)
 {
@@ -518,6 +518,8 @@ bool saveFileFSConfigFile()
   DynamicJsonDocument json(1024);
 
   json["Config_WiFi_OnReboot"] = wifiConfigOnboot;
+  json["MQTT_Broker_IP_Address"] = mqttBrokerIPAddr;
+  json["MQTT_Broker_Port"] = mqttBrokerPort;
 
   File configFile = FileFS.open(configFileName, "w");
 
@@ -588,6 +590,17 @@ int loadFileFSConfigFile()
             Serial.println(F("Initialising wifiConfigOnReboot"));
             strncpy(wifiConfigOnboot, json["Config_WiFi_OnReboot"], sizeof(wifiConfigOnboot));
           }
+          if (json["MQTT_Broker_IP_Address"])
+          {
+            Serial.println(F("Initialising mqttBrokerIPAddr"));
+            strncpy(mqttBrokerIPAddr, json["MQTT_Broker_IP_Address"], sizeof(mqttBrokerIPAddr));
+          }
+          if (json["MQTT_Broker_IP_Port"])
+          {
+            Serial.println(F("Initialising mqttBrokerPort"));
+            strncpy(mqttBrokerIPAddr, json["MQTT_Broker_IP_Port"], sizeof(mqttBrokerPort));
+          }
+
         }
         //serializeJson(json, Serial);
         serializeJsonPretty(json, Serial);

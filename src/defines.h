@@ -29,6 +29,12 @@
 #define MY_NTP_SERVER "at.pool.ntp.org"
 
 
+#define p_mqttBrokerIP_Label         "mqttBrokerIP"
+#define p_mqttBrokerPort_Label         "mqttBrokerPort"
+
+
+
+
 // MQTT Topic Names
 #define oh3CommandIOT "/house/service/iot-command"              // e.g. IOT-IDENTITY, IOT-RESET, IOT-RESTART, IOT-SWITCH-CONFIG
 #define oh3StateLog "/house/service/log"                        // Log messages
