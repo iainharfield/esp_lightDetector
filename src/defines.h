@@ -22,17 +22,12 @@
 
 #define TELNET_PORT 23
 
-#define MQTT_HOST IPAddress(192, 168, 1, 130)
-#define MQTT_PORT 1883
-
 #define MY_TZ TZ_Europe_London
 #define MY_NTP_SERVER "at.pool.ntp.org"
 
 
 #define p_mqttBrokerIP_Label         "mqttBrokerIP"
 #define p_mqttBrokerPort_Label         "mqttBrokerPort"
-
-
 
 
 // MQTT Topic Names

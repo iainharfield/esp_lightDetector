@@ -23,6 +23,8 @@
 #include "defines.h"
 #include "utilities.h"
 
+WiFi_STA_IPConfig WM_STA_IPconfig;
+
 void connectToWifi();
 void onWifiConnect(const WiFiEventStationModeGotIP& event);
 void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
@@ -38,12 +40,12 @@ bool mqttGetConnectedStatus();
 String mqttGetClientID();
 void platform_setup(bool);
 
-void wifiSetupConfig();
 void wifianagerconfigneboot();
 int loadFileFSConfigFile();
 bool saveFileFSConfigFile();
 void setWiFiConfigOnBoot(String);
 void wifiSetupConfig(bool);
+void initSTAIPConfigStruct(WiFi_STA_IPConfig &);
 
 void todNTPUpdate();
 void showTime(); 
@@ -56,6 +58,9 @@ extern bool onMqttMessageExt(char *topic, char *payload, const AsyncMqttClientMe
 extern devConfig sensor;
 extern const char *sensorName;
 extern const char *sensorType;
+extern const char* sensorName;
+extern bool telnetReporting;
+extern int reporting;
 
 
 //const char *PubTopic  = "async-mqtt/ESP8266_Pub";               // Topic to publish
@@ -84,10 +89,7 @@ bool ohTODReceived;
 int day = -1; // 0=Sun 1=Mon, 2=Tue 3=Wed, 4=Thu 5=Fri, 6=Sat
 bool weekDay = true;
 
-extern const char* sensorName;
 
-extern bool telnetReporting;
-extern int reporting;
 
 //wifi server config
 //Set up LittleFS
@@ -98,6 +100,9 @@ char configFileName[] = "/platform/config.json";
 char wifiConfigOnboot   [10]  =   "NO";
 char mqttBrokerIPAddr   [16]  =   "192.168.0.1";
 char mqttBrokerPort     [5]   =   "1883";
+char esp_ipAddress      [15];
+char esp_GWipAddress    [15];
+char esp_netMask        [15];
 
 
 //Keep local copy of Wifi credentials
@@ -109,6 +114,7 @@ char ipAddr[MAX_CFGSTR_LENGTH];
 void platform_setup(bool configWiFi)
 {
   //Serial.println(ASYNC_MQTT_GENERIC_VERSION);
+  uint16_t int_mqttBrokerPort;
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
   wifiDisconnectHandler = WiFi.onStationModeDisconnected(onWifiDisconnect);
@@ -119,7 +125,9 @@ void platform_setup(bool configWiFi)
   mqttClient.onUnsubscribe(onMqttUnsubscribe);
   mqttClient.onMessage(onMqttMessage);
   mqttClient.onPublish(onMqttPublish);
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  String temp = mqttBrokerPort;
+  int_mqttBrokerPort = temp.toInt();
+  mqttClient.setServer(mqttBrokerIPAddr, int_mqttBrokerPort);
 
   configTime(MY_TZ, MY_NTP_SERVER);  // doing this before wifi is connected - seems to ok!
 
@@ -139,17 +147,17 @@ void platform_setup(bool configWiFi)
 void wifiSetupConfig(bool configWiFi)
 {
   #define HTTP_PORT           80
- 
+
   char customhtml_ipv4[150] = "type=\"text\" minlength=\"7\" maxlength=\"15\" size=\"15\" pattern=\"^((\\d{1,2}|1\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(\\d{1,2}|1\\d\\d|2[0-4]\\d|25[0-5])$\"";
   char customhtml_port[150] = "type=\"text\" minlength=\"4\" maxlength=\"4\" size=\"4\"pattern=\"[0-9]{4}\"" ;
 
   AsyncWebServer webServer(HTTP_PORT);
   DNSServer dnsServer;
-// new 3 lines
-  ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer, "Personalized-HostName");  
+
+  ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer); //, "Personalized-HostName");  
   ESPAsync_WMParameter p_mqttBrokerIP(p_mqttBrokerIP_Label, "MQTT Broker IP address", mqttBrokerIPAddr, 16, customhtml_ipv4, WFM_LABEL_AFTER);
   ESPAsync_WMParameter p_mqttBrokerPort(p_mqttBrokerPort_Label, "MQTT Broker Port", mqttBrokerPort, 5, customhtml_port, WFM_LABEL_AFTER);
-
+   
   ESPAsync_wifiManager.addParameter(&p_mqttBrokerIP);
   ESPAsync_wifiManager.addParameter(&p_mqttBrokerPort);
 
@@ -170,10 +178,13 @@ void wifiSetupConfig(bool configWiFi)
   }
   if (configWiFi == true)
   {
+    initSTAIPConfigStruct(WM_STA_IPconfig);
     String portalSSID = "ESP-" + sensor.getType() + "-" + sensor.getName();
     Serial.println("ESP Self-Stored: SSID = " + portalSSID);
   
     ESPAsync_wifiManager.setConfigPortalTimeout(0);
+
+    ESPAsync_wifiManager.setSTAStaticIPConfig(WM_STA_IPconfig);
     ESPAsync_wifiManager.startConfigPortal(portalSSID.c_str());
 
     // get the updated values and write to config file.  Note SSID and PASS are stored by the portal service.
@@ -181,6 +192,7 @@ void wifiSetupConfig(bool configWiFi)
     Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
     strcpy(mqttBrokerIPAddr,  p_mqttBrokerIP.getValue());
     strcpy(mqttBrokerPort,  p_mqttBrokerPort.getValue());
+
     saveFileFSConfigFile();
 
     configWiFi = false;
@@ -244,8 +256,12 @@ void onWifiConnect(const WiFiEventStationModeGotIP& event)
 {
   (void) event;
   
-  Serial.print("Connected to Wi-Fi. IP address: "); 
-  Serial.println(WiFi.localIP());
+  Serial.print("Connected to Wi-Fi. IP address: "); Serial.println(WiFi.localIP());
+
+  sprintf(esp_ipAddress,"%s", WiFi.localIP().toString().c_str());
+  sprintf(esp_GWipAddress,"%s", WiFi.gatewayIP().toString().c_str());
+  sprintf(esp_netMask,"%s", WiFi.subnetMask().toString().c_str());
+  saveFileFSConfigFile();
 
   //configTime(MY_TZ, MY_NTP_SERVER);  // doing this before wifi is connected - seems to ok!
  
@@ -278,8 +294,8 @@ void printSeparationLine()
 
 void onMqttConnect(bool sessionPresent) 
 {
-  Serial.print("Connected to MQTT broker: "); Serial.print(MQTT_HOST);
-  Serial.print(", port: "); Serial.println(MQTT_PORT);
+  Serial.print("Connected to MQTT broker: "); Serial.print(mqttBrokerIPAddr);
+  Serial.print(", port: "); Serial.println(mqttBrokerIPAddr);
 
   //Serial.print("Session present: "); Serial.println(sessionPresent);
   
@@ -292,7 +308,6 @@ void onMqttConnect(bool sessionPresent)
   packetIdSub = mqttClient.subscribe(oh3CommandTOD, 2);
   packetIdSub = mqttClient.subscribe(oh3CommandIdentity, 2);
   
- 
 }
 
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) 
@@ -520,6 +535,9 @@ bool saveFileFSConfigFile()
   json["Config_WiFi_OnReboot"] = wifiConfigOnboot;
   json["MQTT_Broker_IP_Address"] = mqttBrokerIPAddr;
   json["MQTT_Broker_Port"] = mqttBrokerPort;
+  json["IP_Address"] = esp_ipAddress;
+  json["GW_IP_Address"] = esp_GWipAddress;
+  json["Net_Mask"] = esp_netMask;
 
   File configFile = FileFS.open(configFileName, "w");
 
@@ -595,12 +613,26 @@ int loadFileFSConfigFile()
             Serial.println(F("Initialising mqttBrokerIPAddr"));
             strncpy(mqttBrokerIPAddr, json["MQTT_Broker_IP_Address"], sizeof(mqttBrokerIPAddr));
           }
-          if (json["MQTT_Broker_IP_Port"])
+          if (json["MQTT_Broker_Port"])
           {
             Serial.println(F("Initialising mqttBrokerPort"));
-            strncpy(mqttBrokerIPAddr, json["MQTT_Broker_IP_Port"], sizeof(mqttBrokerPort));
+            strncpy(mqttBrokerPort, json["MQTT_Broker_Port"], sizeof(mqttBrokerPort));
           }
-
+          if (json["IP_Address"])
+          {
+            Serial.println(F("Fetching last IP Address"));
+            strncpy(esp_ipAddress, json["IP_Address"], sizeof(esp_ipAddress));
+          }
+          if (json["GW_IP_Address"])
+          {
+            Serial.println(F("Fetching last GW IP Address"));
+            strncpy(esp_GWipAddress, json["GW_IP_Address"], sizeof(esp_GWipAddress));
+          }
+          if (json["Net_Mask"])
+          {
+            Serial.println(F("Fetching last network mask"));
+            strncpy(esp_netMask, json["Net_Mask"], sizeof(esp_netMask));
+          }
         }
         //serializeJson(json, Serial);
         serializeJsonPretty(json, Serial);
@@ -633,4 +665,21 @@ void setWiFiConfigOnBoot(String state)
 void deleteConfigfile()
 {
   LittleFS.remove(configFileName);
+}
+
+void initSTAIPConfigStruct(WiFi_STA_IPConfig &in_WM_STA_IPconfig)
+{
+  IPAddress ip;
+  IPAddress gwip;
+  IPAddress netmask;
+  ip.fromString(esp_ipAddress);
+  gwip.fromString(esp_GWipAddress);
+  netmask.fromString(esp_netMask);
+
+  IPAddress stationIP   = ip;
+  IPAddress gatewayIP   = gwip;
+  IPAddress netMask     = netmask;
+  in_WM_STA_IPconfig._sta_static_ip   = stationIP;
+  in_WM_STA_IPconfig._sta_static_gw   = gatewayIP;
+  in_WM_STA_IPconfig._sta_static_sn   = netMask;
 }
