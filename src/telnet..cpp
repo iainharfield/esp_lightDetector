@@ -13,6 +13,7 @@ extern const char* sensorName;
 extern const char *iotDevice;
 extern const char *sensorName;
 extern const char *sensorType;
+extern char wifiConfigOnboot[];
 extern char ntptod[];
 extern void mqttDisconnect(); 
 extern bool mqttGetConnectedStatus();
@@ -89,13 +90,17 @@ void handleTelnet()
               telnet_extension_1(c);
             break;
            	case 'w':
-        	  	  Telnet.println("Set config WiFi credentials on next reboot");
-                setWiFiConfigOnBoot("YES");
-            break;  
-            case 'x':
-        	  	  Telnet.println("Set config WiFi credentials to NO");
-                setWiFiConfigOnBoot("NO");
-            break;                      
+                if (strcmp(wifiConfigOnboot, "NO") == 0)
+                {
+        	  	    Telnet.println("Set config WiFi credentials on next reboot");
+                  setWiFiConfigOnBoot("YES");
+                }  
+                else 
+                {
+                  Telnet.println("Do not config WiFi credentials on next reboot - normal reboot");
+                  setWiFiConfigOnBoot("NO");
+                } 
+            break;                        
           	case 'm':
         	  	  Telnet.println("Disconnecting from MQTT Broker ");
                 mqttDisconnect(); 

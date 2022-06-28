@@ -36,9 +36,10 @@
 #define oh3CommandTOD "/house/service/time-of-day"              // Time of day broadcast from OpenHab
 #define oh3CommandIdentity "/house/ldr/daylight-front/identity" // Respomse message to IOT-IDENTITY
 
-#define REPORT_INFO 0
-#define REPORT_WARN 1
-#define REPORT_DEBUG 2
+#define REPORT_INFO   0
+#define REPORT_WARN   1
+#define REPORT_DEBUG  2
+
 
 class devConfig
 {
