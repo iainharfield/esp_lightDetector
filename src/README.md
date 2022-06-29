@@ -12,5 +12,7 @@ An extensible menu will appear.
 
 
 
-type "h" to get a list of connamds.
+type "h" to get a list of commands.
+
+MQTT commands and responses:
 

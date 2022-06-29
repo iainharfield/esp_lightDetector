@@ -56,9 +56,9 @@ extern void printTelnet(String);
 extern bool onMqttMessageExt(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total);
 
 extern devConfig sensor;
-extern const char *sensorName;
-extern const char *sensorType;
-extern const char* sensorName;
+extern const char *deviceName;
+extern const char *deviceType;
+extern const char* deviceName;
 extern bool telnetReporting;
 extern int reporting;
 
@@ -241,10 +241,10 @@ void connectToMqtt()
   Serial.println("Connecting to MQTT...");
   
   memset(willTopic,0, sizeof willTopic);
-	sprintf(willTopic, "/house/ldr/%s/lwt", sensorName);
+	sprintf(willTopic, "/house/ldr/%s/lwt", deviceName);
 
   memset(mqttClientID,0, sizeof mqttClientID);
-	sprintf(mqttClientID, "%s:%s", sensorName, WiFi.macAddress().c_str());
+	sprintf(mqttClientID, "%s:%s", deviceName, WiFi.macAddress().c_str());
   
   mqttClient.setClientId(mqttClientID);
   mqttClient.setWill(willTopic,1,true, "Offline");  //Check Case
@@ -428,7 +428,7 @@ void onMqttMessage(char *topic, char *payload, const AsyncMqttClientMessagePrope
             mqttLog(logString, true, true);
 
             memset(logString, 0, sizeof logString);
-            sprintf(logString, "%s,%s,%s,%s,%s", iotDevice, sensorType, sensorName,WiFi.localIP().toString().c_str() , Router_SSID.c_str());
+            sprintf(logString, "%s,%s,%s,%s,%s", iotDevice, deviceType, deviceName,WiFi.localIP().toString().c_str() , Router_SSID.c_str());
             mqttClient.publish(oh3CommandIdentity, 1, true, logString);
         }
         if (strcmp(iotCmd[0], "IOT-RESET") == 0) //

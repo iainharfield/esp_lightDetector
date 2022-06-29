@@ -41,8 +41,8 @@ extern bool telnetReporting;
 
 // Application Specific MQTT Topics and config
 const char *oh3StateValue = "/house/ldr/daylight-front/value";
-const char *sensorName = "daylight-front";
-const char *sensorType = "LDR";
+const char *deviceName = "daylight-front";
+const char *deviceType = "LDR";
 
 Ticker sensorReadTimer;
 int sensorValue;
@@ -57,7 +57,7 @@ void setup()
     while (!Serial)
         delay(300);
 
-    sensor.setup(sensorName, sensorType);
+    sensor.setup(deviceName, deviceType);
 
     Serial.println("\nStarting Daylight detector on ");
     Serial.println(ARDUINO_BOARD);

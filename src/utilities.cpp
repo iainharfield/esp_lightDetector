@@ -6,8 +6,8 @@
 extern AsyncMqttClient mqttClient;
 
 extern const char *iotDevice;
-extern const char *sensorName;
-extern const char *sensorType;
+extern const char *deviceName;
+extern const char *deviceType;
 extern char ntptod[MAX_CFGSTR_LENGTH];
 extern bool ntpTODReceived;
 
@@ -22,7 +22,7 @@ bool mqttLog(const char* msg, bool mqtt, bool monitor)
   char logMsg[MAX_LOGSTRING_LENGTH]; 
   memset(logMsg,0, sizeof logMsg);
 
-  sprintf(logMsg, "%s,%s,%s,%s", ntptod, sensorType, sensorName, msg);    
+  sprintf(logMsg, "%s,%s,%s,%s", ntptod, deviceType, deviceName, msg);    
   if (mqtt)
   {
         mqttClient.publish(oh3StateLog, 0, true, logMsg);
