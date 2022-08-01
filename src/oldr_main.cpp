@@ -16,7 +16,11 @@
 #include "defines.h"
 #include "utilities.h"
 
+//***********************
+// Template functions
+//**********************
 bool onMqttMessageExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);
+void appMQTTTopicSubscribe();
 int sensorRead();
 void telnet_extension_1(char);
 void telnet_extension_2(char);
@@ -40,15 +44,14 @@ extern int reporting;
 extern bool telnetReporting;
 
 // Application Specific MQTT Topics and config
-const char *oh3StateValue = "/house/ldr/daylight-front/value";
-const char *deviceName = "daylight-front";
-const char *deviceType = "LDR";
+const char *oh3StateValue = "/house/ldr/daylight-front/value";  //FIXTHIS
+String deviceName = "daylight-front";
+String deviceType = "LDR";
 
 Ticker sensorReadTimer;
 int sensorValue;
 
-
-devConfig sensor;
+devConfig espDevice;
 
 void setup()
 {
@@ -57,7 +60,7 @@ void setup()
     while (!Serial)
         delay(300);
 
-    sensor.setup(deviceName, deviceType);
+    espDevice.setup(deviceName, deviceType);
 
     Serial.println("\nStarting Daylight detector on ");
     Serial.println(ARDUINO_BOARD);
@@ -95,7 +98,7 @@ bool onMqttMessageExt(char *topic, char *payload, const AsyncMqttClientMessagePr
 }
 
 // Subscribe to application specific topics
-void mqttTopicSubscribe()
+void appMQTTTopicSubscribe()
 {
 
     // mqttTopicsubscribe(oh3StateValue, 2);
@@ -140,7 +143,7 @@ void telnet_extension_2(char c)
 // Process any application specific telnet commannds
 void telnet_extensionHelp(char c)
 {
-    printTelnet((String) "x\t\tSome description0");
+    printTelnet((String) "x\t\tSome description");
 }
 
 void drdDetected()

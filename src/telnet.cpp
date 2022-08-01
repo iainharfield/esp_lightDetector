@@ -9,10 +9,8 @@ WiFiClient Telnet;
 void handleTelnet();
 void printTelnet(String);
 
-extern const char* deviceName;
-extern const char *iotDevice;
-extern const char *deviceName;
-extern const char *deviceType;
+extern String deviceName;
+extern String deviceType;
 extern char wifiConfigOnboot[];
 extern char ntptod[];
 extern void mqttDisconnect(); 
@@ -25,7 +23,7 @@ extern void telnet_extensionHelp(char);
 extern void setWiFiConfigOnBoot(String);
 
 extern String Router_SSID;
-int reporting = REPORT_INFO;
+int reporting = REPORT_DEBUG;
 bool telnetReporting = false;
 
 void printTelnet(String msg)
@@ -72,8 +70,8 @@ void handleTelnet()
         	  	sprintf(logString,
         			  "%s%s\n\r%s%s\n\r%s%s\n\r%s%i\n\r%s%s\n\r%s%i\n\r%s%d.%d.%d.%d",
 					    "Date:\t\t",getFormattedTime().c_str(),
-        			"Sensor Type:\t", deviceType,
-					    "Sensor Name:\t", deviceName,
+        			"Sensor Type:\t", deviceType.c_str(),
+					    "Sensor Name:\t", deviceName.c_str(),
 					    "WiFi Connect:\t", WiFi.status(),
 					    "SSID:\t\t", Router_SSID.c_str(),
 					    "Sig Strength:\t", sigStrength,

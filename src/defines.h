@@ -27,14 +27,14 @@
 
 
 #define p_mqttBrokerIP_Label         "mqttBrokerIP"
-#define p_mqttBrokerPort_Label         "mqttBrokerPort"
+#define p_mqttBrokerPort_Label       "mqttBrokerPort"
 
 
 // MQTT Topic Names
 #define oh3CommandIOT "/house/service/iot-command"              // e.g. IOT-IDENTITY, IOT-RESET, IOT-RESTART, IOT-SWITCH-CONFIG
-#define oh3StateLog "/house/service/log"                        // Log messages
+#define oh3StateLog   "/house/service/log"                        // Log messages
 #define oh3CommandTOD "/house/service/time-of-day"              // Time of day broadcast from OpenHab
-#define oh3CommandIdentity "/house/ldr/daylight-front/identity" // Respomse message to IOT-IDENTITY
+//#define oh3CommandIdentity "/house/ldr/daylight-front/identity" // Respomse message to IOT-IDENTITY
 
 #define REPORT_INFO   0
 #define REPORT_WARN   1

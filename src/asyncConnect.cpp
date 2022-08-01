@@ -1,15 +1,14 @@
 /****************************************************************************************************************************
   FullyFeatureSSL_ESP8266.ino 2022
-  
+
   AsyncMqttClient_Generic is a library for ESP32, ESP8266, Protenta_H7, STM32F7, etc. with current AsyncTCP support
-  
+
   Based on and modified from :
-  
+
   1) async-mqtt-client (https://github.com/marvinroger/async-mqtt-client)
-  
+
   Built by Khoi Hoang https://github.com/khoih-prog/AsyncMqttClient_Generic
  *****************************************************************************************************************************/
-
 
 #include <ESP8266WiFi.h>
 #include <time.h>
@@ -18,7 +17,7 @@
 #include <ESPAsync_WiFiManager.h> // needed for SSID and Password config
 #include <AsyncMqtt_Generic.h>    // compile issues need to edit json file
 #include "LittleFS.h"
-#include <ArduinoJson.h> 
+#include <ArduinoJson.h>
 
 #include "defines.h"
 #include "utilities.h"
@@ -26,15 +25,15 @@
 WiFi_STA_IPConfig WM_STA_IPconfig;
 
 void connectToWifi();
-void onWifiConnect(const WiFiEventStationModeGotIP& event);
-void onWifiDisconnect(const WiFiEventStationModeDisconnected& event);
+void onWifiConnect(const WiFiEventStationModeGotIP &event);
+void onWifiDisconnect(const WiFiEventStationModeDisconnected &event);
 void onMqttConnect(bool);
 void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
-void onMqttSubscribe(const uint16_t& packetId, const uint8_t& qos);
-void onMqttUnsubscribe(const uint16_t& packetId);
-void onMqttMessage(char* topic, char* payload, const AsyncMqttClientMessageProperties& properties, const size_t& len, const size_t& index, const size_t& total);
-void onMqttPublish(const uint16_t& packetId);
-void mqttTopicsubscribe( const char* topic,int qos);
+void onMqttSubscribe(const uint16_t &packetId, const uint8_t &qos);
+void onMqttUnsubscribe(const uint16_t &packetId);
+void onMqttMessage(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total);
+void onMqttPublish(const uint16_t &packetId);
+void mqttTopicsubscribe(const char *topic, int qos);
 void mqttDisconnect();
 bool mqttGetConnectedStatus();
 String mqttGetClientID();
@@ -48,22 +47,25 @@ void wifiSetupConfig(bool);
 void initSTAIPConfigStruct(WiFi_STA_IPConfig &);
 
 void todNTPUpdate();
-void showTime(); 
+void showTime();
 String getFormattedTime();
 void ota_setup();
+
+// Implementation in telnet.cpp
 extern void telnetBegin();
 extern void printTelnet(String);
+// Implementation in application code
 extern bool onMqttMessageExt(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total);
+extern void appMQTTTopicSubscribe();
 
-extern devConfig sensor;
-extern const char *deviceName;
-extern const char *deviceType;
-extern const char* deviceName;
+extern devConfig espDevice;
+extern String deviceType;
+extern String deviceName;
+
 extern bool telnetReporting;
 extern int reporting;
 
-
-//const char *PubTopic  = "async-mqtt/ESP8266_Pub";               // Topic to publish
+// const char *PubTopic  = "async-mqtt/ESP8266_Pub";               // Topic to publish
 
 WiFiEventHandler wifiConnectHandler;
 WiFiEventHandler wifiDisconnectHandler;
@@ -79,41 +81,43 @@ uint16_t packetIdSub;
 
 char ntptod[MAX_CFGSTR_LENGTH];
 
-const char *iotDevice = ARDUINO_BOARD;
+const char *iotBoard = ARDUINO_BOARD;
 
-time_t now;                         // this is the epoch
+time_t now; // this is the epoch
 
 bool ntpTODReceived = false;
-bool ohTODReceived;
+bool ohTODReceived = false;
 
-int day = -1; // 0=Sun 1=Mon, 2=Tue 3=Wed, 4=Thu 5=Fri, 6=Sat
+int dayNum = -1; // 0=Sun 1=Mon, 2=Tue 3=Wed, 4=Thu 5=Fri, 6=Sat
 bool weekDay = true;
+int ohTimenow = 0;
 
-
-
-//wifi server config
-//Set up LittleFS
-#define FileFS        LittleFS
-#define FS_Name       "LittleFS"
+// wifi server config
+// Set up LittleFS
+#define FileFS LittleFS
+#define FS_Name "LittleFS"
 #define FILE_NOT_FOUND 2
 char configFileName[] = "/platform/config.json";
-char wifiConfigOnboot   [10]  =   "NO";
-char mqttBrokerIPAddr   [16]  =   "192.168.0.1";
-char mqttBrokerPort     [5]   =   "1883";
-char esp_ipAddress      [15];
-char esp_GWipAddress    [15];
-char esp_netMask        [15];
+char wifiConfigOnboot[10] = "NO";
+char mqttBrokerIPAddr[16] = "192.168.0.1";
+char mqttBrokerPort[5] = "1883";
+char esp_ipAddress[15];
+char esp_GWipAddress[15];
+char esp_netMask[15];
 
-
-//Keep local copy of Wifi credentials
+// Keep local copy of Wifi credentials
 String Router_SSID;
 String Router_Pass;
 
 char ipAddr[MAX_CFGSTR_LENGTH];
 
+//String lowerDeviceType = espDevice.getName();
+//lowerDeviceType = lowerDeviceType.toLowerCase();
+//String oh3CommandIdentity = "/house/" + lowerDeviceType + "/" + deviceName + "/identity";
+
 void platform_setup(bool configWiFi)
 {
-  //Serial.println(ASYNC_MQTT_GENERIC_VERSION);
+  // Serial.println(ASYNC_MQTT_GENERIC_VERSION);
   uint16_t int_mqttBrokerPort;
 
   wifiConnectHandler = WiFi.onStationModeGotIP(onWifiConnect);
@@ -129,48 +133,46 @@ void platform_setup(bool configWiFi)
   int_mqttBrokerPort = temp.toInt();
   mqttClient.setServer(mqttBrokerIPAddr, int_mqttBrokerPort);
 
-  configTime(MY_TZ, MY_NTP_SERVER);  // doing this before wifi is connected - seems to ok!
+  configTime(MY_TZ, MY_NTP_SERVER); // doing this before wifi is connected - seems to ok!
 
   int rslt = loadFileFSConfigFile();
   if (rslt == FILE_NOT_FOUND)
   {
-      Serial.println("Config file not found");
-     saveFileFSConfigFile(); // initialise config with defult values
+    Serial.println("Config file not found");
+    saveFileFSConfigFile(); // initialise config with defult values
   }
-  wifiSetupConfig(configWiFi);
 
+  wifiSetupConfig(configWiFi);
 
   connectToWifi();
 }
 
-
 void wifiSetupConfig(bool configWiFi)
 {
-  #define HTTP_PORT           80
+#define HTTP_PORT 80
 
   char customhtml_ipv4[150] = "type=\"text\" minlength=\"7\" maxlength=\"15\" size=\"15\" pattern=\"^((\\d{1,2}|1\\d\\d|2[0-4]\\d|25[0-5])\\.){3}(\\d{1,2}|1\\d\\d|2[0-4]\\d|25[0-5])$\"";
-  char customhtml_port[150] = "type=\"text\" minlength=\"4\" maxlength=\"4\" size=\"4\"pattern=\"[0-9]{4}\"" ;
+  char customhtml_port[150] = "type=\"text\" minlength=\"4\" maxlength=\"4\" size=\"4\"pattern=\"[0-9]{4}\"";
 
   AsyncWebServer webServer(HTTP_PORT);
   DNSServer dnsServer;
 
-  ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer); //, "Personalized-HostName");  
+  ESPAsync_WiFiManager ESPAsync_wifiManager(&webServer, &dnsServer); //, "Personalized-HostName");
   ESPAsync_WMParameter p_mqttBrokerIP(p_mqttBrokerIP_Label, "MQTT Broker IP address", mqttBrokerIPAddr, 16, customhtml_ipv4, WFM_LABEL_AFTER);
   ESPAsync_WMParameter p_mqttBrokerPort(p_mqttBrokerPort_Label, "MQTT Broker Port", mqttBrokerPort, 5, customhtml_port, WFM_LABEL_AFTER);
-   
+
   ESPAsync_wifiManager.addParameter(&p_mqttBrokerIP);
   ESPAsync_wifiManager.addParameter(&p_mqttBrokerPort);
 
   Router_SSID = ESPAsync_wifiManager.WiFi_SSID();
   Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
-  
 
-  //if not SSID or password not set then start Config Portal
-  if ( Router_SSID == "" || Router_Pass == "" )  // if either not set assume an inital config needed
-  {  
+  // if not SSID or password not set then start Config Portal
+  if (Router_SSID == "" || Router_Pass == "") // if either not set assume an inital config needed
+  {
     configWiFi = true;
-  } 
-  if ( strcmp(wifiConfigOnboot,"YES") == 0 )
+  }
+  if (strcmp(wifiConfigOnboot, "YES") == 0)
   {
     Serial.println("wifiConfigOnboot == YES");
     configWiFi = true;
@@ -179,9 +181,9 @@ void wifiSetupConfig(bool configWiFi)
   if (configWiFi == true)
   {
     initSTAIPConfigStruct(WM_STA_IPconfig);
-    String portalSSID = "ESP-" + sensor.getType() + "-" + sensor.getName();
+    String portalSSID = "ESP-" + espDevice.getType() + "-" + espDevice.getName();
     Serial.println("ESP Self-Stored: SSID = " + portalSSID);
-  
+
     ESPAsync_wifiManager.setConfigPortalTimeout(0);
 
     ESPAsync_wifiManager.setSTAStaticIPConfig(WM_STA_IPconfig);
@@ -190,27 +192,25 @@ void wifiSetupConfig(bool configWiFi)
     // get the updated values and write to config file.  Note SSID and PASS are stored by the portal service.
     Router_SSID = ESPAsync_wifiManager.WiFi_SSID();
     Router_Pass = ESPAsync_wifiManager.WiFi_Pass();
-    strcpy(mqttBrokerIPAddr,  p_mqttBrokerIP.getValue());
-    strcpy(mqttBrokerPort,  p_mqttBrokerPort.getValue());
+    strcpy(mqttBrokerIPAddr, p_mqttBrokerIP.getValue());
+    strcpy(mqttBrokerPort, p_mqttBrokerPort.getValue());
 
     saveFileFSConfigFile();
 
     configWiFi = false;
   }
   Serial.println("ESP Self-Stored: SSID = " + Router_SSID + ", Pass = " + Router_Pass + ", Broker IP = " + mqttBrokerIPAddr + ", Broker Port = " + mqttBrokerPort);
-
 }
 
-
-void mqttTopicsubscribe( const char* topic,int qos)
+void mqttTopicsubscribe(const char *topic, int qos)
 {
   packetIdSub = mqttClient.subscribe(topic, qos);
-} 
+}
 
 void mqttDisconnect()
 {
   mqttClient.disconnect(true);
-} 
+}
 
 bool mqttGetConnectedStatus()
 {
@@ -222,53 +222,51 @@ String mqttGetClientID()
 }
 //
 
-
-void connectToWifi() 
+void connectToWifi()
 {
-  if ( WiFi.status() != WL_CONNECTED ) 
+  if (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("Connecting to Wi-Fi...");
-    //WiFi.mode(WIFI_STA);
+    // WiFi.mode(WIFI_STA);
     WiFi.begin(Router_SSID, Router_Pass);
   }
-  else 
+  else
     Serial.println("Already connected to Wi-Fi...");
-
 }
 
-void connectToMqtt() 
+void connectToMqtt()
 {
   Serial.println("Connecting to MQTT...");
-  
-  memset(willTopic,0, sizeof willTopic);
-	sprintf(willTopic, "/house/ldr/%s/lwt", deviceName);
 
-  memset(mqttClientID,0, sizeof mqttClientID);
-	sprintf(mqttClientID, "%s:%s", deviceName, WiFi.macAddress().c_str());
-  
+  memset(willTopic, 0, sizeof willTopic);
+  sprintf(willTopic, "/house/ldr/%s/lwt", deviceName.c_str());
+
+  memset(mqttClientID, 0, sizeof mqttClientID);
+  sprintf(mqttClientID, "%s:%s", deviceName.c_str(), WiFi.macAddress().c_str());
+
   mqttClient.setClientId(mqttClientID);
-  mqttClient.setWill(willTopic,1,true, "Offline");  //Check Case
+  mqttClient.setWill(willTopic, 1, true, "Offline"); // Check Case
   mqttClient.connect();
-  
 }
 
-void onWifiConnect(const WiFiEventStationModeGotIP& event) 
+void onWifiConnect(const WiFiEventStationModeGotIP &event)
 {
-  (void) event;
-  
-  Serial.print("Connected to Wi-Fi. IP address: "); Serial.println(WiFi.localIP());
+  (void)event;
 
-  sprintf(esp_ipAddress,"%s", WiFi.localIP().toString().c_str());
-  sprintf(esp_GWipAddress,"%s", WiFi.gatewayIP().toString().c_str());
-  sprintf(esp_netMask,"%s", WiFi.subnetMask().toString().c_str());
+  Serial.print("Connected to Wi-Fi. IP address: ");
+  Serial.println(WiFi.localIP());
+
+  sprintf(esp_ipAddress, "%s", WiFi.localIP().toString().c_str());
+  sprintf(esp_GWipAddress, "%s", WiFi.gatewayIP().toString().c_str());
+  sprintf(esp_netMask, "%s", WiFi.subnetMask().toString().c_str());
   saveFileFSConfigFile();
 
-  //configTime(MY_TZ, MY_NTP_SERVER);  // doing this before wifi is connected - seems to ok!
- 
-  Serial.print("Start NTP timer"); 
-  todUpdateTimer.attach(5,todNTPUpdate);
+  // configTime(MY_TZ, MY_NTP_SERVER);  // doing this before wifi is connected - seems to ok!
 
-  Serial.print("Start OTA setup"); 
+  Serial.print("Start NTP timer");
+  todUpdateTimer.attach(30, todNTPUpdate);
+
+  Serial.print("Start OTA setup");
   ota_setup();
 
   telnetBegin();
@@ -276,15 +274,15 @@ void onWifiConnect(const WiFiEventStationModeGotIP& event)
   connectToMqtt();
 }
 
-void onWifiDisconnect(const WiFiEventStationModeDisconnected& event) 
+void onWifiDisconnect(const WiFiEventStationModeDisconnected &event)
 {
-  (void) event;
-  
+  (void)event;
+
   Serial.println("Disconnected from Wi-Fi.");
   mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
   wifiReconnectTimer.once(2, connectToWifi);
 
-  todUpdateTimer.detach();  // id no wifi dont use NTP - seems to cause huge delays
+  todUpdateTimer.detach(); // id no wifi dont use NTP - seems to cause huge delays
 }
 
 void printSeparationLine()
@@ -292,239 +290,264 @@ void printSeparationLine()
   Serial.println("************************************************");
 }
 
-void onMqttConnect(bool sessionPresent) 
+void onMqttConnect(bool sessionPresent)
 {
-  Serial.print("Connected to MQTT broker: "); Serial.print(mqttBrokerIPAddr);
-  Serial.print(", port: "); Serial.println(mqttBrokerIPAddr);
+  Serial.print("Connected to MQTT broker: ");
+  Serial.print(mqttBrokerIPAddr);
+  Serial.print(", port: ");
+  Serial.println(mqttBrokerPort);
 
-  //Serial.print("Session present: "); Serial.println(sessionPresent);
-  
-  mqttClient.publish(willTopic,1,true, "online");
-  
-  mqttLog("MQTT Connected.",true,true);
-  
+  // Serial.print("Session present: "); Serial.println(sessionPresent);
+
+  mqttClient.publish(willTopic, 1, true, "online");
+
+  mqttLog("MQTT Connected.", true, true);
+  //printTelnet("connected to MQTT");
+
   // Subscribe to Managment topics
   packetIdSub = mqttClient.subscribe(oh3CommandIOT, 2);
   packetIdSub = mqttClient.subscribe(oh3CommandTOD, 2);
-  packetIdSub = mqttClient.subscribe(oh3CommandIdentity, 2);
-  
+
+  //*********************************************************
+  // Launch any application subscriptions
+  // this function must be imlemented by the application
+  //**********************************************************
+  appMQTTTopicSubscribe();
 }
 
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) 
+void onMqttDisconnect(AsyncMqttClientDisconnectReason reason)
 {
-  (void) reason;
-  
-  Serial.println("Disconnected from MQTT.");
+  (void)reason;
 
-  if (WiFi.isConnected()) 
+  Serial.println("Disconnected from MQTT.");
+  //printTelnet("Disconnected from MQTT");
+
+  if (WiFi.isConnected())
   {
     mqttReconnectTimer.once(2, connectToMqtt);
   }
 }
 
-void onMqttSubscribe(const uint16_t& packetId, const uint8_t& qos)
+void onMqttSubscribe(const uint16_t &packetId, const uint8_t &qos)
 {
   Serial.println("Subscribe acknowledged.");
-  Serial.print("  packetId: "); Serial.println(packetId);
-  Serial.print("  qos: ");      Serial.println(qos);
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
+  Serial.print("  qos: ");
+  Serial.println(qos);
 }
 
-void onMqttUnsubscribe(const uint16_t& packetId)
+void onMqttUnsubscribe(const uint16_t &packetId)
 {
   Serial.println("Unsubscribe acknowledged.");
-  Serial.print("  packetId: "); Serial.println(packetId);
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
 }
 
-void onMqttPublish(const uint16_t& packetId)
+void onMqttPublish(const uint16_t &packetId)
 {
   Serial.println("Publish acknowledged.");
-  Serial.print("  packetId: "); Serial.println(packetId);
+  Serial.print("  packetId: ");
+  Serial.println(packetId);
 }
 
 void onMqttMessage(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total)
 {
-    char logString[MAX_LOGSTRING_LENGTH];
-    char iotCmd[10][21]; // 10 strings each 20 chars long
+  char logString[MAX_LOGSTRING_LENGTH];
+  char iotCmd[10][21]; // 10 strings each 20 chars long
+  long timeNow[4];     // Contains Current time of day [HH],[MM]
 
-    // char str2[100];  //FIX THIS
-    // memset(str2,0, sizeof str2);
+  // char str2[100];  //FIX THIS
+  // memset(str2,0, sizeof str2);
 
-    (void)payload;
+  (void)payload;
 
-    char mqtt_payload[len+1];
-    mqtt_payload[len] = '\0';
-    strncpy(mqtt_payload, payload, len);
+  char mqtt_payload[len + 1];
+  mqtt_payload[len] = '\0';
+  strncpy(mqtt_payload, payload, len);
 
-    if (reporting == REPORT_DEBUG)
-	  {
-        mqttLog(mqtt_payload, true, true);
-    }
+  if (reporting == REPORT_DEBUG)
+  {
+    mqttLog(mqtt_payload, true, true);
+  }
 
+  /*    Serial.println("Publish received.");
+      Serial.print("  topic: ");
+      Serial.println(topic);
+      Serial.print("  qos: ");
+      Serial.println(properties.qos);
+      Serial.print("  dup: ");
+      Serial.println(properties.dup);
+      Serial.print("  retain: ");
+      Serial.println(properties.retain);
+      Serial.print("  len: ");
+      Serial.println(len);
+      Serial.print("  index: ");
+      Serial.println(index);
+      Serial.print("  total: ");
+      Serial.println(total);
+      Serial.print("  payload: ");
+      Serial.println(mqtt_payload);
+      */
 
+  //****************************
+  // Implement application MQTT
+  //****************************
+  if (onMqttMessageExt(topic, payload, properties, len, index, total))
+  {
+    // Print out any error message : FIXTHIS
+  }
+  /******************************************
+   * Time of day event
+   *     Process in times
+   *     process is in NEXT mode
+   ******************************************/
+  else if (strcmp(topic, oh3CommandTOD) == 0)
+  {
 
-/*    Serial.println("Publish received.");
-    Serial.print("  topic: ");
-    Serial.println(topic);
-    Serial.print("  qos: ");
-    Serial.println(properties.qos);
-    Serial.print("  dup: ");
-    Serial.println(properties.dup);
-    Serial.print("  retain: ");
-    Serial.println(properties.retain);
-    Serial.print("  len: ");
-    Serial.println(len);
-    Serial.print("  index: ");
-    Serial.println(index);
-    Serial.print("  total: ");
-    Serial.println(total);
-    Serial.print("  payload: ");
-    Serial.println(mqtt_payload);
-    */
+    dayNum = get_weekday(mqtt_payload);
+    weekDay = false;
+    if (dayNum >= 1 && dayNum <= 5)
+      weekDay = true;
 
+    int day, year, month, hr, min, sec;
+    sscanf(mqtt_payload, "%d-%d-%dT%d:%d:%d", &year, &month, &day, &hr, &min, &sec);
+    timeNow[0] = hr;
+    timeNow[1] = min;
+    ohTimenow = (timeNow[0] * 100) + timeNow[1];
 
-    if (onMqttMessageExt(topic, payload, properties,  len,  index, total))
+    ohTODReceived = true;
+  }
+  else if (strcmp(topic, oh3CommandIOT) == 0)
+  {
+    int i = 0;
+    char *pch;
+
+    /*
+     * Parse the string into an array of strings
+     */
+
+    pch = strtok(mqtt_payload, ","); // Get the fist string
+    while (pch != NULL)
     {
-
+      memset(iotCmd[i], 0, sizeof iotCmd[i]);
+      strcpy(iotCmd[i], pch);
+      pch = strtok(NULL, ",");
+      if (reporting == REPORT_DEBUG)
+      {
+        mqttLog(iotCmd[i], true, true);
+      }
+      i++;
     }
-    /******************************************
-     * Time of day event
-     *     Process in times
-     *     process is in NEXT mode
-     ******************************************/
-    else if (strcmp(topic, oh3CommandTOD) == 0)
+    if (strcmp(iotCmd[0], "IOT-IDENTITY") == 0) //
     {
-        day = get_weekday(mqtt_payload);
-        weekDay = false;
-        if (day >= 1 && day <= 5)
-            weekDay = true;
+      String dt = espDevice.getType();
+      String dn = espDevice.getName();
+      dt.toLowerCase(); //needs to be lower case for MQTT topic name
+      dn.toLowerCase();
+      String oh3CommandIdentity = "/house/" + dt + "/" + dn + "/identity";
 
-        ohTODReceived = true;
+      memset(logString, 0, sizeof logString);
+      sprintf(logString, "%s%s,%s%s", "ipAddr:", WiFi.localIP().toString().c_str(), "SSID:", Router_SSID.c_str());
+      mqttLog(logString, true, true);
+
+      memset(logString, 0, sizeof logString);
+      sprintf(logString, "%s,%s,%s,%s,%s", iotBoard, deviceType.c_str(), deviceName.c_str(), WiFi.localIP().toString().c_str(), Router_SSID.c_str());
+      mqttClient.publish(oh3CommandIdentity.c_str(), 1, true, logString);
+      printTelnet(logString);
     }
-    else if (strcmp(topic, oh3CommandIOT) == 0)
+    if (strcmp(iotCmd[0], "IOT-RESET") == 0) //
     {
-        int i = 0;
-        char *pch;
-
-        /*
-         * Parse the string into an array of strings
-         */
- 
-        pch = strtok(mqtt_payload, ","); // Get the fist string
-        while (pch != NULL)
-        {
-            memset(iotCmd[i], 0, sizeof iotCmd[i]);
-            strcpy(iotCmd[i], pch);
-            pch = strtok(NULL, ",");
-            if (reporting == REPORT_DEBUG)
-	        {
-                mqttLog(iotCmd[i], true, true);
-            }
-            i++;
-        }
-        if (strcmp(iotCmd[0], "IOT-IDENTITY") == 0) //
-        {
-            memset(logString, 0, sizeof logString);
-            sprintf(logString, "%s%s,%s%s", "ipAddr:", WiFi.localIP().toString().c_str(), "SSID:", Router_SSID.c_str());
-            mqttLog(logString, true, true);
-
-            memset(logString, 0, sizeof logString);
-            sprintf(logString, "%s,%s,%s,%s,%s", iotDevice, deviceType, deviceName,WiFi.localIP().toString().c_str() , Router_SSID.c_str());
-            mqttClient.publish(oh3CommandIdentity, 1, true, logString);
-        }
-        if (strcmp(iotCmd[0], "IOT-RESET") == 0) //
-        {
-            if (strcmp(iotCmd[1],WiFi.localIP().toString().c_str() ) == 0)
-            {
-                memset(logString, 0, sizeof logString);
-                sprintf(logString, "%s%s,%s%s", "ipAddr:", WiFi.localIP().toString().c_str(), "SSID:", Router_SSID.c_str());
-                mqttLog(logString, true, true);
-
-                ESP.restart();
-            }
-        }
-    }
-
-    else
-    {
+      if (strcmp(iotCmd[1], WiFi.localIP().toString().c_str()) == 0)
+      {
         memset(logString, 0, sizeof logString);
-        sprintf(logString, "%s%s %s",  "Unknown message received: ", topic, mqtt_payload);
+        sprintf(logString, "%s%s,%s%s", "ipAddr:", WiFi.localIP().toString().c_str(), "SSID:", Router_SSID.c_str());
         mqttLog(logString, true, true);
-    }
-}
 
+        ESP.restart();
+      }
+    }
+  }
+
+  else
+  {
+    memset(logString, 0, sizeof logString);
+    sprintf(logString, "%s%s %s", "Unknown message received: ", topic, mqtt_payload);
+    mqttLog(logString, true, true);
+  }
+}
 
 void todNTPUpdate()
 {
-  memset(ntptod,0, sizeof ntptod);
-	sprintf(ntptod, "%s", getFormattedTime().c_str());
-  //Serial.println(getFormattedTime().substring(0,4));
-  if (getFormattedTime().substring(0,4) != "1970") // seem to take 30 to 60seconds. MQTT connection should be done by then?  Mmmm not sure I like!
+  memset(ntptod, 0, sizeof ntptod);
+  sprintf(ntptod, "%s", getFormattedTime().c_str());
+
+  if (getFormattedTime().substring(0, 4) != "1970") // seem to take 30 to 60seconds. MQTT connection should be done by then?  Mmmm not sure I like!
   {
-    todUpdateTimer.detach();  // TOD updated so stop looking
+    if (reporting == REPORT_DEBUG)
+    {
+      //mqttLog(getFormattedTime().substring(0, 4).c_str(), true, true);
+      mqttLog(ntptod, true, true);
+    }
+    // todUpdateTimer.detach();  // TOD updated so stop looking
     ntpTODReceived = true;
-	  mqttLog(ntptod, false,true);
+
   }
 }
 
 void ota_setup()
 {
-    Serial.println("Setting Up OTA");
-    /************************
-	 * OTA setup
-	 ************************/
-	  ArduinoOTA.onStart([]()
-	  {
-	    Serial.println("Start");
-	  });
+  Serial.println("Setting Up OTA");
+  /************************
+   * OTA setup
+   ************************/
+  ArduinoOTA.onStart([]()
+                     { Serial.println("Start"); });
 
-	  ArduinoOTA.onEnd([]() {
-		  Serial.println("\nEnd");
-	  });
+  ArduinoOTA.onEnd([]()
+                   { Serial.println("\nEnd"); });
 
-	  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-		  Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-	  });
-	  ArduinoOTA.onError([](ota_error_t error) {
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
+                        { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
+  ArduinoOTA.onError([](ota_error_t error)
+                     {
 		  Serial.printf("Error[%u]: ", error);
 		  if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
 		  else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
 		  else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
 		  else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-		  else if (error == OTA_END_ERROR) Serial.println("End Failed");
-	  });
-	  ArduinoOTA.begin();
+		  else if (error == OTA_END_ERROR) Serial.println("End Failed"); });
+  ArduinoOTA.begin();
 }
 
 String getFormattedTime()
 {
-   //time_t rawtime = timeClient.getEpochTime();
+  // time_t rawtime = timeClient.getEpochTime();
   time_t rawtime = time(&now);
-   struct tm * ti;
-   ti = localtime (&rawtime);
+  struct tm *ti;
+  ti = localtime(&rawtime);
 
-   uint16_t year = ti->tm_year + 1900;
-   String yearStr = String(year);
+  uint16_t year = ti->tm_year + 1900;
+  String yearStr = String(year);
 
-   uint8_t month = ti->tm_mon + 1;
-   String monthStr = month < 10 ? "0" + String(month) : String(month);
+  uint8_t month = ti->tm_mon + 1;
+  String monthStr = month < 10 ? "0" + String(month) : String(month);
 
-   uint8_t day = ti->tm_mday;
-   String dayStr = day < 10 ? "0" + String(day) : String(day);
+  uint8_t day = ti->tm_mday;
+  String dayStr = day < 10 ? "0" + String(day) : String(day);
 
-   uint8_t hours = ti->tm_hour;
-   String hoursStr = hours < 10 ? "0" + String(hours) : String(hours);
+  uint8_t hours = ti->tm_hour;
+  String hoursStr = hours < 10 ? "0" + String(hours) : String(hours);
 
-   uint8_t minutes = ti->tm_min;
-   String minuteStr = minutes < 10 ? "0" + String(minutes) : String(minutes);
+  uint8_t minutes = ti->tm_min;
+  String minuteStr = minutes < 10 ? "0" + String(minutes) : String(minutes);
 
-   uint8_t seconds = ti->tm_sec;
-   String secondStr = seconds < 10 ? "0" + String(seconds) : String(seconds);
+  uint8_t seconds = ti->tm_sec;
+  String secondStr = seconds < 10 ? "0" + String(seconds) : String(seconds);
 
-   return yearStr + "-" + monthStr + "-" + dayStr + "T" +
-          hoursStr + ":" + minuteStr + ":" + secondStr;
+  return yearStr + "-" + monthStr + "-" + dayStr + "T" +
+         hoursStr + ":" + minuteStr + ":" + secondStr;
 }
-
-
 
 bool saveFileFSConfigFile()
 {
@@ -547,32 +570,32 @@ bool saveFileFSConfigFile()
     return false;
   }
 
-  //serializeJson(json, Serial);
+  // serializeJson(json, Serial);
   serializeJsonPretty(json, Serial);
   Serial.println();
-  // Write data to file 
+  // Write data to file
   serializeJson(json, configFile);
-  //Close file
+  // Close file
   configFile.close();
-  
+
   return true;
 }
 
 int loadFileFSConfigFile()
 {
-  //clean FS, for testing
-  //FileFS.format();
+  // clean FS, for testing
+  // FileFS.format();
 
-  //read configuration from FS json
+  // read configuration from FS json
   Serial.println(F("Mounting FS..."));
 
   if (FileFS.begin())
   {
-    //Serial.println(F("Mounted file system"));
+    // Serial.println(F("Mounted file system"));
 
     if (FileFS.exists(configFileName))
     {
-      //file exists, reading and loading
+      // file exists, reading and loading
       Serial.println(F("Reading config file"));
       File configFile = FileFS.open(configFileName, "r");
 
@@ -589,11 +612,10 @@ int loadFileFSConfigFile()
 
         Serial.print(F("\nJSON parseObject() result : "));
 
-
         DynamicJsonDocument json(1024);
         auto deserializeError = deserializeJson(json, buf.get(), configFileSize);
 
-        if ( deserializeError )
+        if (deserializeError)
         {
           Serial.println(F("failed"));
           configFile.close();
@@ -634,7 +656,7 @@ int loadFileFSConfigFile()
             strncpy(esp_netMask, json["Net_Mask"], sizeof(esp_netMask));
           }
         }
-        //serializeJson(json, Serial);
+        // serializeJson(json, Serial);
         serializeJsonPretty(json, Serial);
         configFile.close();
       }
@@ -643,7 +665,7 @@ int loadFileFSConfigFile()
     {
       Serial.println(F("Config file does not exist"));
       return FILE_NOT_FOUND;
-    }  
+    }
   }
   else
   {
@@ -655,11 +677,11 @@ int loadFileFSConfigFile()
 
 void setWiFiConfigOnBoot(String state)
 {
-  if (state == "YES" || state =="NO")
+  if (state == "YES" || state == "NO")
   {
-    strcpy(wifiConfigOnboot,state.c_str());
+    strcpy(wifiConfigOnboot, state.c_str());
     saveFileFSConfigFile();
-  }  
+  }
 }
 
 void deleteConfigfile()
@@ -676,10 +698,10 @@ void initSTAIPConfigStruct(WiFi_STA_IPConfig &in_WM_STA_IPconfig)
   gwip.fromString(esp_GWipAddress);
   netmask.fromString(esp_netMask);
 
-  IPAddress stationIP   = ip;
-  IPAddress gatewayIP   = gwip;
-  IPAddress netMask     = netmask;
-  in_WM_STA_IPconfig._sta_static_ip   = stationIP;
-  in_WM_STA_IPconfig._sta_static_gw   = gatewayIP;
-  in_WM_STA_IPconfig._sta_static_sn   = netMask;
+  IPAddress stationIP = ip;
+  IPAddress gatewayIP = gwip;
+  IPAddress netMask = netmask;
+  in_WM_STA_IPconfig._sta_static_ip = stationIP;
+  in_WM_STA_IPconfig._sta_static_gw = gatewayIP;
+  in_WM_STA_IPconfig._sta_static_sn = netMask;
 }
