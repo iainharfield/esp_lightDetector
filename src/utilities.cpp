@@ -4,15 +4,17 @@
 #include <AsyncMqttClient_Generic.hpp>
 
 extern AsyncMqttClient mqttClient;
+extern void printTelnet(String);      // defined in telnet.cpp
 
 
 extern String deviceName;
 extern String deviceType;
 extern char ntptod[MAX_CFGSTR_LENGTH];
 extern bool ntpTODReceived;
+extern bool telnetReporting;
 
 //Publish a log message to 
-bool mqttLog(const char* msg, bool mqtt, bool monitor)
+bool mqttLog(const char* msg, bool mqtt, bool monitor)   // FIXTHIS
 {
   //Serial.print("sensor Name: "); Serial.println(sensorName);
 
@@ -31,6 +33,11 @@ bool mqttLog(const char* msg, bool mqtt, bool monitor)
   {
         Serial.println(logMsg);
   }
+  if (telnetReporting == true)
+  {
+          printTelnet(logMsg);
+  }
+
 	return false;
 }
 

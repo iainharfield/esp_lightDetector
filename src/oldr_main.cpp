@@ -17,14 +17,15 @@
 #include "utilities.h"
 
 //***********************
-// Template functions
+// Application functions
 //**********************
-bool onMqttMessageExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);
+bool onMqttMessageExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);    // Required by template
 void appMQTTTopicSubscribe();
 int sensorRead();
-void telnet_extension_1(char);
-void telnet_extension_2(char);
-void telnet_extensionHelp(char);
+void telnet_extension_1(char);      // Required by template
+void telnet_extension_2(char);      // Required by template
+void telnet_extensionHelp(char);    // Required by template
+void processTOD_Ext();              // Required by template
 
 // defined in asyncConnect.cpp
 extern void mqttTopicsubscribe(const char *topic, int qos);
@@ -33,6 +34,8 @@ extern void handleTelnet();
 extern void printTelnet(String);
 extern AsyncMqttClient mqttClient;
 extern void wifiSetupConfig(bool);
+
+
 
 #define DRD_TIMEOUT 3
 #define DRD_ADDRESS 0
@@ -150,3 +153,18 @@ void drdDetected()
 {
     Serial.println("Double resert detected");
 }
+
+
+//**********************************************************************
+// Main Application
+// chect current time against configutation and decide what to do.
+// Send appropriate MQTT command for each control.
+// Run this everytime the TOD changes
+// If TOD event is not received then nothing happens
+//**********************************************************************
+void processTOD_Ext()
+{
+    // Nothing to do for this app
+}
+
+ 

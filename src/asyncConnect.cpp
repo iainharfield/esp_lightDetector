@@ -57,6 +57,7 @@ extern void printTelnet(String);
 // Implementation in application code
 extern bool onMqttMessageExt(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total);
 extern void appMQTTTopicSubscribe();
+extern void processTOD_Ext();
 
 extern devConfig espDevice;
 extern String deviceType;
@@ -73,6 +74,8 @@ WiFiEventHandler wifiDisconnectHandler;
 Ticker mqttReconnectTimer;
 Ticker wifiReconnectTimer;
 Ticker todUpdateTimer;
+Ticker processTOD;
+
 
 AsyncMqttClient mqttClient;
 char mqttClientID[MAX_CFGSTR_LENGTH];
@@ -417,6 +420,11 @@ void onMqttMessage(char *topic, char *payload, const AsyncMqttClientMessagePrope
     ohTimenow = (timeNow[0] * 100) + timeNow[1];
 
     ohTODReceived = true;
+
+
+    //Notify application that TOD has been received
+    processTOD.once(2, processTOD_Ext);
+
   }
   else if (strcmp(topic, oh3CommandIOT) == 0)
   {
