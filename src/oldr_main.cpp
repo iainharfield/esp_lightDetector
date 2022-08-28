@@ -36,7 +36,6 @@ extern AsyncMqttClient mqttClient;
 extern void wifiSetupConfig(bool);
 
 
-
 #define DRD_TIMEOUT 3
 #define DRD_ADDRESS 0
 
