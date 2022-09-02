@@ -19,7 +19,7 @@
 //***********************
 // Application functions
 //**********************
-bool onMqttMessageExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);    // Required by template
+bool onMqttMessageAppExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);    // Required by template
 void appMQTTTopicSubscribe();
 int sensorRead();
 void telnet_extension_1(char);      // Required by template
@@ -94,7 +94,7 @@ void loop()
 // Process any application specific inbound MQTT messages
 // Return False if none
 // Return true if an MQTT message was handled here
-bool onMqttMessageExt(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total)
+bool onMqttMessageAppExt(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total)
 {
     return false;
 }

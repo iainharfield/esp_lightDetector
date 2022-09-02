@@ -23,7 +23,7 @@ extern void telnet_extensionHelp(char);
 extern void setWiFiConfigOnBoot(String);
 
 extern String Router_SSID;
-int reporting = REPORT_DEBUG;
+int reporting = REPORT_INFO;
 bool telnetReporting = false;
 
 void printTelnet(String msg)
