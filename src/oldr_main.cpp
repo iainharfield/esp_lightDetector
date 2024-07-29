@@ -1,10 +1,15 @@
 
-//#include <Arduino.h>
-#include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <Ticker.h>
+#include <AsyncMqttClient.h> 
 #include <time.h>
-#include <AsyncMqttClient_Generic.hpp>
+
+#include "hh_defines.h"
+#include "hh_utilities.h"
+#include "hh_cntrl.h"
+
+// Folling line added to stop compilation error suddenly occuring in 2024???
+#include "ESPAsyncDNSServer.h"
 
 #define ESP8266_DRD_USE_RTC true
 #define ESP_DRD_USE_LITTLEFS false
@@ -13,27 +18,35 @@
 #define DOUBLERESETDETECTOR_DEBUG true
 #include <ESP_DoubleResetDetector.h>
 
-#include "defines.h"
-#include "utilities.h"
+//***********************
+// Template functions
+//***********************
+bool onMqttMessageAppExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);
+bool onMqttMessageAppCntrlExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);
+void appMQTTTopicSubscribe();
+void telnet_extension_1(char);
+void telnet_extension_2(char);
+void telnet_extensionHelp(char);
+void startTimesReceivedChecker();
+void processCntrlTOD_Ext();
 
 //***********************
 // Application functions
 //**********************
-bool onMqttMessageAppExt(char *, char *, const AsyncMqttClientMessageProperties &, const size_t &, const size_t &, const size_t &);    // Required by template
-void appMQTTTopicSubscribe();
 int sensorRead();
-void telnet_extension_1(char);      // Required by template
-void telnet_extension_2(char);      // Required by template
-void telnet_extensionHelp(char);    // Required by template
-void processTOD_Ext();              // Required by template
+//void processTOD_Ext();              // Required by template
 
+//******************************
 // defined in asyncConnect.cpp
+//******************************
 extern void mqttTopicsubscribe(const char *topic, int qos);
 extern void platform_setup(bool);
 extern void handleTelnet();
 extern void printTelnet(String);
 extern AsyncMqttClient mqttClient;
 extern void wifiSetupConfig(bool);
+extern templateServices coreServices;
+extern char ntptod[MAX_CFGSTR_LENGTH];
 
 
 #define DRD_TIMEOUT 3
@@ -112,12 +125,8 @@ int sensorRead()
 
     sensorValue = analogRead(A0); // read analog input pin 0
 
-    if (reporting == REPORT_DEBUG)
-    {
-        memset(logString, 0, sizeof logString);
-        sprintf(logString, "%s,%d", "LDR Detected", sensorValue);
-        mqttLog(logString, true, true);
-    }
+    sprintf(logString, "%s,%d", "LDR Detected", sensorValue);
+    mqttLog(logString, REPORT_DEBUG, true, true);
 
     // Publish value for reporting
     sprintf(logString, "%d", sensorValue);
@@ -166,4 +175,14 @@ void processTOD_Ext()
     // Nothing to do for this app
 }
 
+void processCntrlTOD_Ext()
+{
+    // Nothing to do for this app
+}
+
+bool onMqttMessageAppCntrlExt(char *topic, char *payload, const AsyncMqttClientMessageProperties &properties, const size_t &len, const size_t &index, const size_t &total)
+{
+	// Nothing to do for this app
+    return false;
+}
  
